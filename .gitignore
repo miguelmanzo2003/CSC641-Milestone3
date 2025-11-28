@@ -1,0 +1,15 @@
+# OS/Editor
+.DS_Store
+.vscode/
+
+# Build artifacts & binaries
+/build/
+*.o
+*.a
+*.so*
+*.dylib
+/milestone3
+generatedOutputFile*.txt
+
+# Local libs/binaries
+/lib/

@@ -1,0 +1,11 @@
+{
+    "FileReadBenchmark": [
+        {
+            "testCase1": [
+                {
+                    "readTest": {"inputFileName": "top-output.txt", "numberOfIterations": 10}
+                }
+            ]
+        }
+    ]
+}
