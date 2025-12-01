@@ -49,6 +49,8 @@
 #include <string>
 #include <chrono>
 #include <random>
+#include <thread>
+#include <sstream>
 
 #include "json.hpp"
 
@@ -59,6 +61,50 @@ using json = nlohmann::json;
 
 // Global variable to be used for logging output
 std::ofstream _outFile;
+
+std::mutex m;
+
+//need this bc I added my method(s) first and it uses logToFileAndConsole that appears further down
+void logToFileAndConsole(std::string message);
+
+
+
+/**
+*
+* loadCacheManager
+*
+* @brief Loading Cache Manager with 1000 items with integer key values from 1-1000 
+*
+* @param    cache         cache manager object passed by reference 
+* @param    int         start range of cache manager population 
+* @param    int         end range of cache manager population 
+*
+* @return   nothing, cache manager will be populated with key and values specified by range, 
+*/
+void loadCacheManager(cache::CacheManager<int, std::string, bench::TbbBench> &cm, int startRange, int endRange ) {
+
+    std::lock_guard<std::mutex> lock (m); //auto lock and unlock the following section of code
+
+    using namespace std::literals::chrono_literals;
+    //std::cout << "\nThread id = " << std::this_thread::get_id() << std::endl;
+    std::stringstream stream;
+    stream << std::this_thread::get_id();
+    std::string threadId = stream.str();
+    //logToFileAndConsole("\nThread id = " + threadId);
+
+    for (auto key = startRange; key <= endRange; ++key) {
+        std::string value = "Test value for key: " + std::to_string(key);
+        cm.add(key, value);
+        //logToFileAndConsole("Added key: " + std::to_string(key) + "; value: " + value);
+    }
+
+    //std:: cout << "Finised population wiht thread: " <<  std::this_thread::get_id() << std::endl;
+    //logToFileAndConsole( "Finised population wiht thread: " + threadId);
+
+
+}
+
+
 
 /**
 *
@@ -157,6 +203,48 @@ void getItemTest(json config, cache::CacheManager<int, std::string, bench::TbbBe
 * @return   nothing, but output is sent to console and written to output file
 */
 void timeWrapper(json config) {
+
+    //LOADING CACHE WITH 1000 items (threaded to practice)
+
+    auto startLoad = std::chrono::system_clock::now();
+
+    // Allocate the cache manager
+    cache::CacheManager<int, std::string, bench::TbbBench> cm;
+
+    std::thread threadOneLoad(loadCacheManager, std::ref(cm), 1, 1000);
+    //tested and 1 thread ended up being faster likely because of the locks and waiting
+    //so technically dont really need threading for loading but already tried/practiced 
+    //std::thread threadTwoLoad(loadCacheManager, std::ref(cm), 251, 500);
+    //std::thread threadThreeLoad(loadCacheManager, std::ref(cm), 501, 750);
+    //std::thread threadFourLoad(loadCacheManager, std::ref(cm), 751, 1000);
+
+    threadOneLoad.join();
+    //threadTwoLoad.join();
+    //threadThreeLoad.join();
+    //threadFourLoad.join();
+
+    auto finalLoadEnd = std::chrono::system_clock::now();
+
+    std::chrono::duration<double> load_elapsed_seconds = finalLoadEnd - startLoad;
+    std::time_t end_load_time = std::chrono::system_clock::to_time_t(finalLoadEnd);
+
+    std::cout << "\nFinished loading cache manager at " << std::ctime(&end_load_time)
+        << "Elapsed time to load cache manager: " << load_elapsed_seconds.count() << "s"
+        << std::endl << std::endl;
+
+
+    //we are going to make a function to load 1000 items into the cache manager instead of doing 
+    //this that we have below 
+    // sample test load of the cache
+    /*     //helped in creating cache load and testing
+    for (auto key = 0; key <= testSize; ++key) {
+        std::string value = "Test value for key: " + std::to_string(key);
+        cm.add(key, value);
+        logToFileAndConsole("Added key: " + std::to_string(key) + "; value: " + value);
+    }
+    */
+
+
     // set the start time
     auto start = std::chrono::system_clock::now();
     std::time_t start_time = std::chrono::system_clock::to_time_t(start);
@@ -177,15 +265,12 @@ void timeWrapper(json config) {
 
     int testSize = config["Milestone3"][0]["defaultVariables"][0]["testSize"];
     
-    // Allocate the cache manager
-    cache::CacheManager<int, std::string, bench::TbbBench> cm;
+   
 
-    // sample test load of the cache
-    for (auto key = 0; key <= testSize; ++key) {
-        std::string value = "Test value for key: " + std::to_string(key);
-        cm.add(key, value);
-        logToFileAndConsole("Added key: " + std::to_string(key) + "; value: " + value);
-    }
+
+    
+
+    
 
     // output some helpful comments to the console
     // add the load time calc and output here
