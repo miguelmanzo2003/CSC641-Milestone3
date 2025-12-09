@@ -68,6 +68,76 @@ std::mutex m;
 void logToFileAndConsole(std::string message);
 
 
+struct benchStats{
+
+    //time taken to complete one benchmark in seconds
+    float elapsedTime;
+
+    //number of calls to each function
+    int numGets = 0;
+    int numContains = 0;
+    int numAdds = 0;
+    int numRemoves = 0;
+
+    //average, min and max amount of time Gets function takes
+    float avgGets = 0;
+    float minGets = 0;
+    float maxGets = 0;
+
+    //average, min and max amount of time Contains function takes
+    float avgContains = 0;
+    float minContains = 0;
+    float maxContains = 0;
+    
+    //average, min and max amount of time Adds function takes
+    float avgAdds = 0;
+    float minAdds = 0;
+    float maxAdds = 0;
+
+    //average, min and max amount of time Removes function takes
+    float avgRemoves = 0;
+    float minRemoves = 0;
+    float maxRemoves = 0;
+
+    int sleepInterval = 0;
+};
+
+
+
+
+void benchStatsToString(benchStats &stats){
+
+    if(stats.elapsedTime){
+        logToFileAndConsole("\nElapsed time of this benchmark: " + std::to_string(stats.elapsedTime) + "\n");
+    }
+
+    logToFileAndConsole("AVERAGE Time of Component Method Computations");
+    logToFileAndConsole("Get Item: " + std::to_string(stats.avgGets));
+    logToFileAndConsole("Add: " + std::to_string(stats.avgAdds));
+    logToFileAndConsole("Contains: " + std::to_string(stats.avgContains));
+    logToFileAndConsole("Remove: " + std::to_string(stats.avgRemoves));
+
+    logToFileAndConsole("\nMIN Time of Component Method Computations\n");
+    logToFileAndConsole("Get Item: " + std::to_string(stats.minGets));
+    logToFileAndConsole("Add: " + std::to_string(stats.minAdds));
+    logToFileAndConsole("Contains: " + std::to_string(stats.minContains));
+    logToFileAndConsole("Remove: " + std::to_string(stats.minRemoves));
+
+    logToFileAndConsole("\nMAX Time of Component Method Computations\n");
+    logToFileAndConsole("Get Item: " + std::to_string(stats.maxGets));
+    logToFileAndConsole("Add: " + std::to_string(stats.maxAdds));
+    logToFileAndConsole("Contains: " + std::to_string(stats.maxContains));
+    logToFileAndConsole("Remove: " + std::to_string(stats.maxRemoves));
+
+
+    logToFileAndConsole("\nNumber of calls for each component method");
+    logToFileAndConsole("Get Item: " + std::to_string(stats.numGets));
+    logToFileAndConsole("Add: " + std::to_string(stats.numAdds));
+    logToFileAndConsole("Contains: " + std::to_string(stats.numContains));
+    logToFileAndConsole("Remove: " + std::to_string(stats.numRemoves));
+
+}
+
 
 /**
 *
@@ -103,6 +173,179 @@ void loadCacheManager(cache::CacheManager<int, std::string, bench::TbbBench> &cm
 
 
 }
+
+
+void benchmarkCacheManager(cache::CacheManager<int, std::string, bench::TbbBench> &cm, benchStats &stats) {
+   
+    //std::lock_guard<std::mutex> lock (m); 
+    std::cout << "entered benchmark function\n\n";
+    auto start = std::chrono::system_clock::now();
+
+    //setup for accumalative time of each component function (which will be used for computing avg time for each)
+    std::chrono::duration<double> getTotTime;
+    std::chrono::duration<double> containsTotTime;
+    std::chrono::duration<double> addTotTime;
+    std::chrono::duration<double> removeTotTime;
+
+    //setup for finding min time of each component method
+    float getMinTime = std::numeric_limits<float>::infinity();;
+    float containsMinTime = std::numeric_limits<float>::infinity();;
+    float addMinTime = std::numeric_limits<float>::infinity();;
+    float removeMinTime = std::numeric_limits<float>::infinity();;
+
+    //setup for finding min time of each component method
+    float getMaxTime = 0;
+    float containsMaxTime = 0;
+    float addMaxTime = 0;
+    float removeMaxTime = 0;
+    
+
+    for (int i = 1; i < 10; i ++) {
+
+        for (int j = 1; j < 4; j++){
+
+            auto getTimeNL1 = std::chrono::system_clock::now();
+            cm.getItem(1);
+            auto getEndNL1 = std::chrono::system_clock::now();
+            std::chrono::duration<double> GetDurationNL1 = getEndNL1 - getTimeNL1;
+            getTotTime += GetDurationNL1;
+
+            if(GetDurationNL1.count() < getMinTime){
+                getMinTime = GetDurationNL1.count();
+            }
+
+            if(GetDurationNL1.count() > getMaxTime){
+                getMaxTime = GetDurationNL1.count();
+            }
+
+            stats.numGets++;
+
+        }
+
+
+        auto addTime = std::chrono::system_clock::now();
+        cm.add(1, "stuff");
+        auto addEnd = std::chrono::system_clock::now();
+        std::chrono::duration<double> AddDuration = addEnd - addTime;
+        addTotTime += AddDuration;
+
+        if(AddDuration.count() < addMinTime){
+            addMinTime = AddDuration.count();
+        }
+
+        if(AddDuration.count() > addMaxTime){
+            addMaxTime = AddDuration.count();
+        }
+
+        stats.numAdds++;        
+
+
+        for (int j = 1; j < 4; j++){
+            auto getTimeNL2 = std::chrono::system_clock::now();
+            cm.getItem(1);
+            auto getEndNL2 = std::chrono::system_clock::now();
+            std::chrono::duration<double> GetDurationNL2 = getEndNL2 - getTimeNL2;
+            getTotTime += GetDurationNL2;
+            if(GetDurationNL2.count() < getMinTime){
+                getMinTime = GetDurationNL2.count();
+            }
+            if(GetDurationNL2.count() > getMaxTime){
+                getMaxTime = GetDurationNL2.count();
+            }
+            stats.numGets++;
+        }
+
+
+        if (i == 2 || i == 8){
+
+            auto containsTime = std::chrono::system_clock::now();
+            cm.contains(1);
+            auto containsEnd = std::chrono::system_clock::now();
+            std::chrono::duration<double> escontainsDuration = containsEnd - containsTime;
+            containsTotTime += escontainsDuration;
+
+            if(escontainsDuration.count() < containsMinTime){
+                containsMinTime = escontainsDuration.count();
+            }
+
+            if(escontainsDuration.count() > containsMaxTime){
+                containsMaxTime = escontainsDuration.count();
+            }
+
+            stats.numContains++; 
+        }
+
+        for (int j = 1; j < 4; j++){
+
+            auto getTimeNL3 = std::chrono::system_clock::now();
+            cm.getItem(1);
+            auto getEndNL3 = std::chrono::system_clock::now();
+            std::chrono::duration<double> GetDurationNL3 = getEndNL3 - getTimeNL3;
+            getTotTime += GetDurationNL3;
+
+            if(GetDurationNL3.count() < getMinTime){
+                getMinTime = GetDurationNL3.count();
+            }
+
+            if(GetDurationNL3.count() > getMaxTime){
+                getMaxTime = GetDurationNL3.count();
+            }
+
+            stats.numGets++;; 
+        }
+
+        auto removeTime = std::chrono::system_clock::now();
+        cm.remove(1);
+        auto removeEnd = std::chrono::system_clock::now();
+        std::chrono::duration<double> removeDuration = removeEnd - removeTime;
+        removeTotTime += removeDuration;
+
+        if(removeDuration.count() < removeMinTime){
+            removeMinTime = removeDuration.count();
+        }
+
+        if(removeDuration.count() >removeMaxTime){
+        removeMaxTime = removeDuration.count();
+        }
+
+        stats.numRemoves++;
+    
+    }
+
+    auto End = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = End - start;
+
+    //set duration of one benchmark 
+    stats.elapsedTime = elapsed_seconds.count();
+
+    //set average time of each component method
+    stats.avgGets = getTotTime.count() / stats.numGets;
+    stats.avgAdds = addTotTime.count() / stats.numAdds;
+    stats.avgContains = containsTotTime.count() / stats.numContains;
+    stats.avgRemoves = removeTotTime.count() / stats.numRemoves;
+
+    //set mins
+    stats.minGets = getMinTime;
+    stats.minAdds = addMinTime;
+    stats.minContains = containsMinTime;
+    stats.minRemoves = removeMinTime;
+
+    //set maxs
+    stats.maxGets = getMaxTime;
+    stats.maxAdds = addMaxTime;
+    stats.maxContains = containsMaxTime;
+    stats.maxRemoves = removeMaxTime;
+
+    benchStatsToString(stats);
+
+    
+    //std::this_thread::sleep_for(stats.sleepInterval);
+
+}
+
+
+
+
 
 
 
@@ -204,24 +447,14 @@ void getItemTest(json config, cache::CacheManager<int, std::string, bench::TbbBe
 */
 void timeWrapper(json config) {
 
-    //LOADING CACHE WITH 1000 items (threaded to practice)
+    //LOADING CACHE WITH 1000 items 
 
     auto startLoad = std::chrono::system_clock::now();
 
     // Allocate the cache manager
     cache::CacheManager<int, std::string, bench::TbbBench> cm;
 
-    std::thread threadOneLoad(loadCacheManager, std::ref(cm), 1, 1000);
-    //tested and 1 thread ended up being faster likely because of the locks and waiting
-    //so technically dont really need threading for loading but already tried/practiced 
-    //std::thread threadTwoLoad(loadCacheManager, std::ref(cm), 251, 500);
-    //std::thread threadThreeLoad(loadCacheManager, std::ref(cm), 501, 750);
-    //std::thread threadFourLoad(loadCacheManager, std::ref(cm), 751, 1000);
-
-    threadOneLoad.join();
-    //threadTwoLoad.join();
-    //threadThreeLoad.join();
-    //threadFourLoad.join();
+    loadCacheManager(cm, 1, 1000);
 
     auto finalLoadEnd = std::chrono::system_clock::now();
 
@@ -231,19 +464,11 @@ void timeWrapper(json config) {
     std::cout << "\nFinished loading cache manager at " << std::ctime(&end_load_time)
         << "Elapsed time to load cache manager: " << load_elapsed_seconds.count() << "s"
         << std::endl << std::endl;
-
-
-    //we are going to make a function to load 1000 items into the cache manager instead of doing 
-    //this that we have below 
-    // sample test load of the cache
-    /*     //helped in creating cache load and testing
-    for (auto key = 0; key <= testSize; ++key) {
-        std::string value = "Test value for key: " + std::to_string(key);
-        cm.add(key, value);
-        logToFileAndConsole("Added key: " + std::to_string(key) + "; value: " + value);
-    }
-    */
-
+    
+    benchStats stats;
+    stats.sleepInterval = config["Milestone3"][0]["defaultVariables"][0]["sleepInterval"];
+    benchmarkCacheManager(cm, stats);
+    std::cout << "ELAPSED TIME: " << stats.elapsedTime << std::endl;
 
     // set the start time
     auto start = std::chrono::system_clock::now();
@@ -253,7 +478,7 @@ void timeWrapper(json config) {
     std::cout << "Starting computation at " << std::ctime(&start_time);
 
     // write out the head line for file
-    logToFileAndConsole("threadId\t\tend time\t\titer #\titer\tavg\t\tmin\t\tmax\t\t");
+//logToFileAndConsole("threadId\t\tend time\t\titer #\titer\tavg\t\tmin\t\tmax\t\t");
 
     // need to write out the data for each timed iteration in the following format:
     // 
@@ -263,27 +488,22 @@ void timeWrapper(json config) {
     // <threadId2> <time2>         2   1.1     0.7     1.2
     // ...
 
-    int testSize = config["Milestone3"][0]["defaultVariables"][0]["testSize"];
+//    int testSize = config["Milestone3"][0]["defaultVariables"][0]["testSize"];
     
-   
-
-
-    
-
     
 
     // output some helpful comments to the console
     // add the load time calc and output here
-    std::cout << "Starting computation at " << std::ctime(&start_time);
+//std::cout << "Starting computation at " << std::ctime(&start_time);
 
     // write out the head line for file
-    logToFileAndConsole("threadId\tend time\titer #\t\tavg\t\tmin\t\tmax\t\t");
+//logToFileAndConsole("threadId\tend time\titer #\t\tavg\t\tmin\t\tmax\t\t");
 
     // after loading the cache, spawn threads and start the static ratio test as discussed in Canvas
     // use the same output format as in milestone2 (method, timeWrapper, is left in this example).  
     //     Add thread ID as the first column.
 
-    // call the specific function to time
+    /*// call the specific function to time
     for (int i = 0; i < 10; i++) {
         float average = 0.0;
         float min = 0.0;
@@ -291,16 +511,17 @@ void timeWrapper(json config) {
         int threadId = 1;
 
         // add more functions here
-        getItemTest(config, cm);
+        //getItemTest(config, cm);
 
         // write out the current values for this iteration
         auto curIterEnd = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = curIterEnd - start;
-        //std::time_t iterEndTime = std::chrono::system_clock::to_time_t(curIterEnd);
+        std::time_t iterEndTime = std::chrono::system_clock::to_time_t(curIterEnd);
         std::string timeString = "00:00:00";
 
         logToFileAndConsole(std::to_string(threadId) + "\t" + timeString + "\t" + std::to_string(i) + "\t\t" + std::to_string(average) + "\t" + std::to_string(min) + "\t" + std::to_string(max));
     }
+        */
 
     logToFileAndConsole("\n\n");
 
