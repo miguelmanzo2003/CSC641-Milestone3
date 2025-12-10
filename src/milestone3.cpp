@@ -61,7 +61,7 @@ using json = nlohmann::json;
 
 // Global variable to be used for logging output
 std::ofstream _outFile;
-
+int iteration = 0;
 std::mutex m;
 
 //need this bc I added my method(s) first and it uses logToFileAndConsole that appears further down
@@ -72,69 +72,104 @@ struct benchStats{
 
     //time taken to complete one benchmark in seconds
     float elapsedTime;
+    int iteration = 0;
 
     //number of calls to each function
     int numGets = 0;
     int numContains = 0;
     int numAdds = 0;
     int numRemoves = 0;
+    int numClear = 0;
+
+
+
+    float totTimeGets = 0;
+    float totTimeAdd = 0;
+    float totTimeContains;
+    float totTimeRemove = 0;
+    float totTimeClear = 0;
+
 
     //average, min and max amount of time Gets function takes
     float avgGets = 0;
-    float minGets = 0;
+    float minGets = std::numeric_limits<float>::infinity();;;
     float maxGets = 0;
 
     //average, min and max amount of time Contains function takes
     float avgContains = 0;
-    float minContains = 0;
+    float minContains = std::numeric_limits<float>::infinity();;;
     float maxContains = 0;
     
     //average, min and max amount of time Adds function takes
     float avgAdds = 0;
-    float minAdds = 0;
+    float minAdds = std::numeric_limits<float>::infinity();;;
     float maxAdds = 0;
 
     //average, min and max amount of time Removes function takes
     float avgRemoves = 0;
-    float minRemoves = 0;
+    float minRemoves = std::numeric_limits<float>::infinity();;;
     float maxRemoves = 0;
+
+     //average, min and max amount of time Clear function takes
+    float avgClear = 0;
+    float minClear = std::numeric_limits<float>::infinity();;;
+    float maxClear = 0;
 
     int sleepInterval = 0;
 };
 
 
+int testKey(bool inCache){
 
+    static std::mt19937 gen(std::random_device{}());
+
+    // generate a number mostly inside 1–1000
+    if (inCache) {
+        std::uniform_int_distribution<int> distHit(1, 1000);
+        return distHit(gen);
+    }
+
+    // generate a number always outside 1–1000
+    std::uniform_int_distribution<int> distMiss(1001, 2000);
+    return distMiss(gen);
+}
 
 void benchStatsToString(benchStats &stats){
 
+    std::stringstream ss;
+    ss << std::this_thread::get_id();
+    //logToFileAndConsole("\nThread id: " + ss.str());
+    //std::cout << "entered benchmark function, thread id: " << std::this_thread::get_id();
+    logToFileAndConsole("Method Component\t\tthreadId\t\ttot time\titer #\t\tavg\t\t\t\tmin\t\t\t\tmax\t\t");
+    //logToFileAndConsole("GetItem");
+    logToFileAndConsole("GetItem \t\t\t"+ ss.str() + "\t\t" + std::to_string(stats.totTimeGets) + "\t" + std::to_string(iteration) +"\t\t\t" +std::to_string(stats.avgGets)  +"\t\t" + std::to_string(stats.minGets)  +"\t\t" + std::to_string(stats.minGets));
+    
+    //logToFileAndConsole("Adds");
+    logToFileAndConsole("Add      \t\t\t" + ss.str() + "\t\t" + std::to_string(stats.totTimeAdd) + "\t" + std::to_string(iteration) +"\t\t\t" +std::to_string(stats.avgAdds)  +"\t\t" + std::to_string(stats.minAdds)  +"\t\t" + std::to_string(stats.maxAdds));
+
+    //logToFileAndConsole("Contains");
+    logToFileAndConsole("Contains\t\t\t" + ss.str() + "\t\t" + std::to_string(stats.totTimeContains) + "\t" + std::to_string(iteration) +"\t\t\t" +std::to_string(stats.avgContains)  +"\t\t" + std::to_string(stats.minContains)  +"\t\t" + std::to_string(stats.maxContains));
+
+    //logToFileAndConsole("Removes");
+    logToFileAndConsole("Remove  \t\t\t" + ss.str() + "\t\t" + std::to_string(stats.totTimeRemove) + "\t" + std::to_string(iteration) +"\t\t\t" +std::to_string(stats.avgRemoves)  +"\t\t" + std::to_string(stats.minRemoves)  +"\t\t" + std::to_string(stats.maxRemoves));
+
+    logToFileAndConsole("Clear  \t\t\t\t" + ss.str() + "\t\t" + std::to_string(stats.totTimeClear) + "\t" + std::to_string(iteration) +"\t\t\t" +std::to_string(stats.avgClear)  +"\t\t" + std::to_string(stats.minClear)  +"\t\t" + std::to_string(stats.maxClear));
+
+
+    logToFileAndConsole("Number of calls to getItem: " + std::to_string(stats.numGets));
+
+    logToFileAndConsole("Number of calls to addItem: " + std::to_string(stats.numAdds));
+
+    logToFileAndConsole("Number of calls to Contains: " + std::to_string(stats.numContains));
+
+    logToFileAndConsole("Number of calls to Remove: " + std::to_string(stats.numRemoves));
+
+    logToFileAndConsole("Number of calls to Clear: " + std::to_string(stats.numClear));
+
+
     if(stats.elapsedTime){
-        logToFileAndConsole("\nElapsed time of this benchmark: " + std::to_string(stats.elapsedTime) + "\n");
+        logToFileAndConsole("Elapsed time of this benchmark: " + std::to_string(stats.elapsedTime) + "\n");
     }
-
-    logToFileAndConsole("AVERAGE Time of Component Method Computations");
-    logToFileAndConsole("Get Item: " + std::to_string(stats.avgGets));
-    logToFileAndConsole("Add: " + std::to_string(stats.avgAdds));
-    logToFileAndConsole("Contains: " + std::to_string(stats.avgContains));
-    logToFileAndConsole("Remove: " + std::to_string(stats.avgRemoves));
-
-    logToFileAndConsole("\nMIN Time of Component Method Computations\n");
-    logToFileAndConsole("Get Item: " + std::to_string(stats.minGets));
-    logToFileAndConsole("Add: " + std::to_string(stats.minAdds));
-    logToFileAndConsole("Contains: " + std::to_string(stats.minContains));
-    logToFileAndConsole("Remove: " + std::to_string(stats.minRemoves));
-
-    logToFileAndConsole("\nMAX Time of Component Method Computations\n");
-    logToFileAndConsole("Get Item: " + std::to_string(stats.maxGets));
-    logToFileAndConsole("Add: " + std::to_string(stats.maxAdds));
-    logToFileAndConsole("Contains: " + std::to_string(stats.maxContains));
-    logToFileAndConsole("Remove: " + std::to_string(stats.maxRemoves));
-
-
-    logToFileAndConsole("\nNumber of calls for each component method");
-    logToFileAndConsole("Get Item: " + std::to_string(stats.numGets));
-    logToFileAndConsole("Add: " + std::to_string(stats.numAdds));
-    logToFileAndConsole("Contains: " + std::to_string(stats.numContains));
-    logToFileAndConsole("Remove: " + std::to_string(stats.numRemoves));
 
 }
 
@@ -156,20 +191,15 @@ void loadCacheManager(cache::CacheManager<int, std::string, bench::TbbBench> &cm
     std::lock_guard<std::mutex> lock (m); //auto lock and unlock the following section of code
 
     using namespace std::literals::chrono_literals;
-    //std::cout << "\nThread id = " << std::this_thread::get_id() << std::endl;
+
     std::stringstream stream;
     stream << std::this_thread::get_id();
     std::string threadId = stream.str();
-    //logToFileAndConsole("\nThread id = " + threadId);
 
     for (auto key = startRange; key <= endRange; ++key) {
         std::string value = "Test value for key: " + std::to_string(key);
         cm.add(key, value);
-        //logToFileAndConsole("Added key: " + std::to_string(key) + "; value: " + value);
     }
-
-    //std:: cout << "Finised population wiht thread: " <<  std::this_thread::get_id() << std::endl;
-    //logToFileAndConsole( "Finised population wiht thread: " + threadId);
 
 
 }
@@ -178,35 +208,39 @@ void loadCacheManager(cache::CacheManager<int, std::string, bench::TbbBench> &cm
 void benchmarkCacheManager(cache::CacheManager<int, std::string, bench::TbbBench> &cm, benchStats &stats) {
    
     //std::lock_guard<std::mutex> lock (m); 
-    std::cout << "entered benchmark function\n\n";
-    auto start = std::chrono::system_clock::now();
+    auto start = std::chrono::steady_clock::now();
 
     //setup for accumalative time of each component function (which will be used for computing avg time for each)
     std::chrono::duration<double> getTotTime;
     std::chrono::duration<double> containsTotTime;
     std::chrono::duration<double> addTotTime;
     std::chrono::duration<double> removeTotTime;
+    std::chrono::duration<double> clearTotTime;
+
 
     //setup for finding min time of each component method
     float getMinTime = std::numeric_limits<float>::infinity();;
     float containsMinTime = std::numeric_limits<float>::infinity();;
     float addMinTime = std::numeric_limits<float>::infinity();;
     float removeMinTime = std::numeric_limits<float>::infinity();;
+    float clearMinTime = std::numeric_limits<float>::infinity();;
+
 
     //setup for finding min time of each component method
     float getMaxTime = 0;
     float containsMaxTime = 0;
     float addMaxTime = 0;
     float removeMaxTime = 0;
+    float clearMaxTime = 0;
     
 
     for (int i = 1; i < 10; i ++) {
 
         for (int j = 1; j < 4; j++){
 
-            auto getTimeNL1 = std::chrono::system_clock::now();
+            auto getTimeNL1 = std::chrono::steady_clock::now();
             cm.getItem(1);
-            auto getEndNL1 = std::chrono::system_clock::now();
+            auto getEndNL1 = std::chrono::steady_clock::now();
             std::chrono::duration<double> GetDurationNL1 = getEndNL1 - getTimeNL1;
             getTotTime += GetDurationNL1;
 
@@ -223,9 +257,9 @@ void benchmarkCacheManager(cache::CacheManager<int, std::string, bench::TbbBench
         }
 
 
-        auto addTime = std::chrono::system_clock::now();
+        auto addTime = std::chrono::steady_clock::now();
         cm.add(1, "stuff");
-        auto addEnd = std::chrono::system_clock::now();
+        auto addEnd = std::chrono::steady_clock::now();
         std::chrono::duration<double> AddDuration = addEnd - addTime;
         addTotTime += AddDuration;
 
@@ -241,9 +275,9 @@ void benchmarkCacheManager(cache::CacheManager<int, std::string, bench::TbbBench
 
 
         for (int j = 1; j < 4; j++){
-            auto getTimeNL2 = std::chrono::system_clock::now();
+            auto getTimeNL2 = std::chrono::steady_clock::now();
             cm.getItem(1);
-            auto getEndNL2 = std::chrono::system_clock::now();
+            auto getEndNL2 = std::chrono::steady_clock::now();
             std::chrono::duration<double> GetDurationNL2 = getEndNL2 - getTimeNL2;
             getTotTime += GetDurationNL2;
             if(GetDurationNL2.count() < getMinTime){
@@ -293,7 +327,9 @@ void benchmarkCacheManager(cache::CacheManager<int, std::string, bench::TbbBench
 
             stats.numGets++;; 
         }
+        
 
+       
         auto removeTime = std::chrono::system_clock::now();
         cm.remove(1);
         auto removeEnd = std::chrono::system_clock::now();
@@ -309,37 +345,67 @@ void benchmarkCacheManager(cache::CacheManager<int, std::string, bench::TbbBench
         }
 
         stats.numRemoves++;
+        
     
+    std::this_thread::sleep_for(std::chrono::milliseconds(stats.sleepInterval));
+
     }
 
-    auto End = std::chrono::system_clock::now();
+    auto clearTime = std::chrono::system_clock::now();
+        cm.clear();
+        auto clearEnd = std::chrono::system_clock::now();
+        std::chrono::duration<double> clearDuration = clearEnd - clearTime;
+        clearTotTime += clearDuration;
+
+        if(clearDuration.count() < clearMinTime){
+            clearMinTime = clearDuration.count();
+        }
+
+        if(clearDuration.count() > clearMaxTime){
+            clearMaxTime = clearDuration.count();
+        }
+
+        stats.numClear++;
+
+    auto End = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed_seconds = End - start;
+    
+    //set total time of how long each component method took
+    stats.totTimeGets = getTotTime.count();
+    stats.totTimeAdd = addTotTime.count();
+    stats.totTimeContains = containsTotTime.count();
+    stats.totTimeRemove = removeTotTime.count();
+    stats.totTimeClear =clearTotTime.count();
 
     //set duration of one benchmark 
     stats.elapsedTime = elapsed_seconds.count();
 
     //set average time of each component method
-    stats.avgGets = getTotTime.count() / stats.numGets;
-    stats.avgAdds = addTotTime.count() / stats.numAdds;
-    stats.avgContains = containsTotTime.count() / stats.numContains;
-    stats.avgRemoves = removeTotTime.count() / stats.numRemoves;
+    stats.avgGets = stats.totTimeGets / stats.numGets;
+    stats.avgAdds = stats.totTimeAdd  / stats.numAdds;
+    stats.avgContains = stats.totTimeContains / stats.numContains;
+    stats.avgRemoves = stats.totTimeRemove / stats.numRemoves;
+    stats.avgRemoves = stats.totTimeClear / stats.numClear;
 
     //set mins
     stats.minGets = getMinTime;
     stats.minAdds = addMinTime;
     stats.minContains = containsMinTime;
     stats.minRemoves = removeMinTime;
+    stats.minClear = clearMinTime;
 
     //set maxs
     stats.maxGets = getMaxTime;
     stats.maxAdds = addMaxTime;
     stats.maxContains = containsMaxTime;
     stats.maxRemoves = removeMaxTime;
+    stats.maxClear = clearMaxTime;
 
-    benchStatsToString(stats);
+    //set iteration number
+    iteration++;
+    //benchStatsToString(stats);
 
     
-    //std::this_thread::sleep_for(stats.sleepInterval);
 
 }
 
@@ -447,17 +513,18 @@ void getItemTest(json config, cache::CacheManager<int, std::string, bench::TbbBe
 */
 void timeWrapper(json config) {
 
+    auto start = std::chrono::system_clock::now();
+    std::time_t start_time = std::chrono::system_clock::to_time_t(start);
+    std::string startTimeStr = std::ctime(&start_time);
+    logToFileAndConsole("\nBenchmark Started at: " + startTimeStr);
+    
     //LOADING CACHE WITH 1000 items 
-
     auto startLoad = std::chrono::system_clock::now();
 
     // Allocate the cache manager
     cache::CacheManager<int, std::string, bench::TbbBench> cm;
-
     loadCacheManager(cm, 1, 1000);
-
     auto finalLoadEnd = std::chrono::system_clock::now();
-
     std::chrono::duration<double> load_elapsed_seconds = finalLoadEnd - startLoad;
     std::time_t end_load_time = std::chrono::system_clock::to_time_t(finalLoadEnd);
 
@@ -465,76 +532,105 @@ void timeWrapper(json config) {
         << "Elapsed time to load cache manager: " << load_elapsed_seconds.count() << "s"
         << std::endl << std::endl;
     
-    benchStats stats;
-    stats.sleepInterval = config["Milestone3"][0]["defaultVariables"][0]["sleepInterval"];
-    benchmarkCacheManager(cm, stats);
-    std::cout << "ELAPSED TIME: " << stats.elapsedTime << std::endl;
-
-    // set the start time
-    auto start = std::chrono::system_clock::now();
-    std::time_t start_time = std::chrono::system_clock::to_time_t(start);
-
-    // output some helpful comments to the console
-    std::cout << "Starting computation at " << std::ctime(&start_time);
-
-    // write out the head line for file
-//logToFileAndConsole("threadId\t\tend time\t\titer #\titer\tavg\t\tmin\t\tmax\t\t");
-
-    // need to write out the data for each timed iteration in the following format:
-    // 
-    // threadId    end time    iter#   avg     min     max     
-    // 
-    // <threadId1> <time1>         1   1.2     0.9     1.4
-    // <threadId2> <time2>         2   1.1     0.7     1.2
-    // ...
-
-//    int testSize = config["Milestone3"][0]["defaultVariables"][0]["testSize"];
     
-    
+    //BENCHMARK
+    int degreeOfParallelism = config["Milestone3"][0]["defaultVariables"][0]["degreeOfParallelism"];
 
-    // output some helpful comments to the console
-    // add the load time calc and output here
-//std::cout << "Starting computation at " << std::ctime(&start_time);
+    //vector of bStats structures to store stats and later aggregate
+    std::vector<benchStats> bStats;
 
-    // write out the head line for file
-//logToFileAndConsole("threadId\tend time\titer #\t\tavg\t\tmin\t\tmax\t\t");
-
-    // after loading the cache, spawn threads and start the static ratio test as discussed in Canvas
-    // use the same output format as in milestone2 (method, timeWrapper, is left in this example).  
-    //     Add thread ID as the first column.
-
-    /*// call the specific function to time
-    for (int i = 0; i < 10; i++) {
-        float average = 0.0;
-        float min = 0.0;
-        float max = 0.0;
-        int threadId = 1;
-
-        // add more functions here
-        //getItemTest(config, cm);
-
-        // write out the current values for this iteration
-        auto curIterEnd = std::chrono::system_clock::now();
-        std::chrono::duration<double> elapsed_seconds = curIterEnd - start;
-        std::time_t iterEndTime = std::chrono::system_clock::to_time_t(curIterEnd);
-        std::string timeString = "00:00:00";
-
-        logToFileAndConsole(std::to_string(threadId) + "\t" + timeString + "\t" + std::to_string(i) + "\t\t" + std::to_string(average) + "\t" + std::to_string(min) + "\t" + std::to_string(max));
+    //pushing to the bStat vector
+    for(int i = 0; i < degreeOfParallelism; i++){
+        benchStats stats;
+        stats.sleepInterval = config["Milestone3"][0]["defaultVariables"][0]["sleepInterval"];
+        bStats.push_back(stats);
     }
-        */
 
-    logToFileAndConsole("\n\n");
+    //creating thread of workers and then calling benchMarkCacheManager
+    std::vector<std::thread> bWorkerThreads;
 
+    for(int i = 0; i < degreeOfParallelism; i++){
+        bWorkerThreads.emplace_back(benchmarkCacheManager, std::ref(cm), std::ref(bStats[i]));
+    }
+
+    for(int i = 0; i < degreeOfParallelism; i++){
+        bWorkerThreads[i].join();
+    }
+
+
+    benchStats aggregate;
+
+    for(int i = 0; i < degreeOfParallelism; i++){
+
+        //accumulating totat number of calls for each component function
+        aggregate.numGets += bStats[i].numGets;
+        aggregate.numAdds += bStats[i].numAdds;
+        aggregate.numContains += bStats[i].numContains;
+        aggregate.numRemoves += bStats[i].numRemoves;
+        aggregate.numClear += bStats[i].numClear;
+
+        //accumulating totat number of time for each component function
+        aggregate.totTimeGets += bStats[i].totTimeGets;
+        aggregate.totTimeAdd += bStats[i].totTimeAdd;
+        aggregate.totTimeContains += bStats[i].totTimeContains;
+        aggregate.totTimeRemove += bStats[i].totTimeRemove;
+        aggregate.totTimeClear += bStats[i].totTimeClear;
+
+        //getting min time value out of all threads
+        if(bStats[i].minGets < aggregate.minGets){
+            aggregate.minGets = bStats[i].minGets;
+        }
+        if(bStats[i].minAdds < aggregate.minAdds){
+            aggregate.minAdds = bStats[i].minAdds;
+        }
+        if(bStats[i].minContains < aggregate.minContains){
+            aggregate.minContains = bStats[i].minContains;
+        }
+        if(bStats[i].minRemoves < aggregate.minRemoves){
+            aggregate.minRemoves = bStats[i].minRemoves;
+        }
+        if(bStats[i].minClear < aggregate.minClear){
+            aggregate.minClear = bStats[i].minClear;
+        }
+
+        //getting max time value out of all threads
+        if(bStats[i].maxGets > aggregate.maxGets){
+            aggregate.maxGets = bStats[i].maxGets;
+        }
+        if(bStats[i].maxAdds > aggregate.maxAdds){
+            aggregate.maxAdds = bStats[i].maxAdds;
+        }
+        if(bStats[i].maxContains > aggregate.minContains){
+            aggregate.maxContains = bStats[i].maxContains;
+        }
+        if(bStats[i].maxRemoves > aggregate.maxRemoves){
+            aggregate.maxRemoves = bStats[i].maxRemoves;
+        }
+        if(bStats[i].maxClear > aggregate.maxClear){
+            aggregate.maxClear = bStats[i].maxClear;
+        }
+
+    }
+
+    //calculating the average time of each component function
+    aggregate.avgGets = aggregate.totTimeGets / aggregate.numGets;
+    aggregate.avgAdds = aggregate.totTimeAdd  / aggregate.numAdds;
+    aggregate.avgContains = aggregate.totTimeContains / aggregate.numContains;
+    aggregate.avgRemoves = aggregate.totTimeRemove / aggregate.numRemoves;
+
+    logToFileAndConsole("Aggregate Values Across All Threads");
+    benchStatsToString(aggregate);
+    logToFileAndConsole("WHATSS: " + std::to_string(aggregate.totTimeGets));
     // set the end time
     auto finalEnd = std::chrono::system_clock::now();
 
     std::chrono::duration<double> elapsed_seconds = finalEnd - start;
     std::time_t end_time = std::chrono::system_clock::to_time_t(finalEnd);
+    std::string endTimeStr = std::ctime(&end_time);
+    
 
-    std::cout << "Finished computation at " << std::ctime(&end_time)
-        << "Elapsed time: " << elapsed_seconds.count() << "s"
-        << std::endl << std::endl;
-
+    logToFileAndConsole( "\nFinished Benchmark computation at " + endTimeStr +"\nElapsed Time: " + std::to_string(elapsed_seconds.count())+"s\n\n");
+    
     // print out the cache manager results
     auto benchmarkResults = cm.benchmark();
     bench::printBenchmark(benchmarkResults);
@@ -646,12 +742,7 @@ int main() {
     std::string outputFilePath = config["Milestone3"][0]["files"][0]["outputFile"];
     std::string errorFilePath = config["Milestone3"][0]["files"][0]["errorLogFile"];
 
-    // Retrieve default numberOfIterations
-    //int numberOfIterations = config["Milestone3"][0]["defaultVariables"][0]["numberOfIterations"];
-
-    // Retrieve default readsize
-    //int readSize = config["Milestone3"][0]["defaultVariables"][0]["readSize"];
-
+    
 
     // Open up the outfile and set the output file path using the setter
     //
